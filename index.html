@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فروشگاه آنلاین سه‌بعدی (3D)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Tahoma, sans-serif;
+        }
+
+        body {
+            overflow: hidden;
+            background: #000;
+            color: #fff;
+        }
+
+        #webgl-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* استایل نقاط تعاملی (Hotspots) روی تصویر */
+        .hotspot {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: #ff758c;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px rgba(255, 117, 140, 0.8);
+            animation: pulse 1.5s infinite;
+            z-index: 10;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 0 0 rgba(255, 117, 140, 0.7); }
+            70% { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 0 10px rgba(255, 117, 140, 0); }
+            100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 0 0 rgba(255, 117, 140, 0); }
+        }
+
+        /* کارت محصول پاپ‌آپ هنگام کلیک روی نقاط */
+        .product-card {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(20, 20, 20, 0.9);
+            padding: 20px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            width: 320px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 20;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .product-card.active {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .product-card h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #ffafcc;
+        }
+
+        .product-card p {
+            font-size: 14px;
+            color: #ccc;
+            margin-bottom: 12px;
+        }
+
+        .price {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .btn-buy {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(to right, #ff758c, #ff7eb3);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-buy:hover {
+            opacity: 0.9;
+        }
+
+        .hint {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #ddd;
+            pointer-events: none;
+            z-index: 10;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hint">برای چرخش در محیط فروشگاه، صفحه را با ماوس بکشید. روی نقاط قرمز برای خرید کلیک کنید.</div>
+    
+    <!-- کانتینر رندر سه‌بعدی -->
+    <div id="webgl-container"></div>
+
+    <!-- نقاط تعاملی HTML که روی فضای سه‌بعدی قرار می‌گیرند -->
+    <div id="hotspot-1" class="hotspot" style="top: 60%; left: 35%;" onclick="showProduct('پالتو و لباس مجلسی زنانه', 'مجموعه پاییزه، دوخت عالی و پارچه درجه یک', '۳,۴۰۰,۰۰۰ تومان')"></div>
+    <div id="hotspot-2" class="hotspot" style="top: 58%; left: 72%;" onclick="showProduct('کت و شلوار کلاسیک شیک', 'طراحی مدرن مناسب مهمانی‌ها و جلسات رسمی', '۴,۸۰۰,۰۰۰ تومان')"></div>
+
+    <!-- کارت اطلاعات محصول (پاپ‌آپ) -->
+    <div id="productCard" class="product-card">
+        <h3 id="prodTitle">نام محصول</h3>
+        <p id="prodDesc">توضیحات محصول اینجا قرار می‌گیرد.</p>
+        <div class="price" id="prodPrice">۰ تومان</div>
+        <button class="btn-buy" onclick="addToCart()">افزودن به سبد خرید</button>
+    </div>
+
+    <!-- کتابخانه‌های Three.js و OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // ۱. راه‌اندازی صحنه، دوربین و رندرور
+        const container = document.getElementById('webgl-container');
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 0.1);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        // ۲. اضافه کردن کنترل چرخش دوربین
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableZoom = false;
+        controls.enablePan = false;
+        controls.rotateSpeed = -0.25;
+
+        // ۳. قرار دادن تصویر فروشگاه به عنوان پس‌زمینه سه‌بعدی (کره محیطی)
+        const geometry = new THREE.SphereGeometry(500, 60, 40);
+        geometry.scale(-1, 1, 1); // برعکس کردن کره به سمت داخل
+
+        const textureLoader = new THREE.TextureLoader();
+        
+        // نام فایل تصویر به store.jpg تغییر یافت (تصویر باید کنار این فایل HTML باشد)
+        textureLoader.load('store.jpg', 
+            (texture) => {
+                const material = new THREE.MeshBasicMaterial({ map: texture });
+                const sphere = new THREE.Mesh(geometry, material);
+                scene.add(sphere);
+                console.log("تصویر با موفقیت بارگذاری شد.");
+            }, 
+            undefined, 
+            (error) => {
+                console.error("خطا در بارگذاری تصویر! بررسی کنید که فایل store.jpg دقیقاً کنار فایل html باشد.", error);
+                alert("تصویر پس‌زمینه یافت نشد! لطفاً نام عکس را به store.jpg تغییر داده و در کنار فایل کد قرار دهید.");
+            }
+        );
+
+        // ۴. مدیریت نمایش پاپ‌آپ محصولات
+        function showProduct(title, desc, price) {
+            document.getElementById('prodTitle').innerText = title;
+            document.getElementById('prodDesc').innerText = desc;
+            document.getElementById('prodPrice').innerText = price;
+            
+            const card = document.getElementById('productCard');
+            card.classList.add('active');
+        }
+
+        function addToCart() {
+            alert("محصول با موفقیت به سبد خرید فروشگاه اضافه شد!");
+            document.getElementById('productCard').classList.remove('active');
+        }
+
+        // بستن پاپ‌آپ با کلیک خارج از آن
+        window.addEventListener('click', (e) => {
+            if(!e.target.closest('.hotspot') && !e.target.closest('.product-card')) {
+                document.getElementById('productCard').classList.remove('active');
+            }
+        });
+
+        // ۵. حلقه انیمیشن رندر
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // ۶. واکنش‌گرایی صفحه
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
