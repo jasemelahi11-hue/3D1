@@ -24,7 +24,6 @@
             display: block;
         }
 
-        /* استایل نقاط تعاملی (Hotspots) روی تصویر */
         .hotspot {
             position: absolute;
             width: 24px;
@@ -45,7 +44,6 @@
             100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 0 0 rgba(255, 117, 140, 0); }
         }
 
-        /* کارت محصول پاپ‌آپ هنگام کلیک روی نقاط */
         .product-card {
             position: absolute;
             bottom: 30px;
@@ -119,21 +117,20 @@
             pointer-events: none;
             z-index: 10;
             text-align: center;
+            width: 90%;
+            max-width: 400px;
         }
     </style>
 </head>
 <body>
 
-    <div class="hint">برای چرخش در محیط فروشگاه، صفحه را با ماوس بکشید. روی نقاط قرمز برای خرید کلیک کنید.</div>
+    <div class="hint">برای چرخش در محیط فروشگاه صفحه را بکشید. روی نقاط قرمز کلیک کنید.</div>
     
-    <!-- کانتینر رندر سه‌بعدی -->
     <div id="webgl-container"></div>
 
-    <!-- نقاط تعاملی HTML که روی فضای سه‌بعدی قرار می‌گیرند -->
-    <div id="hotspot-1" class="hotspot" style="top: 60%; left: 35%;" onclick="showProduct('پالتو و لباس مجلسی زنانه', 'مجموعه پاییزه، دوخت عالی و پارچه درجه یک', '۳,۴۰۰,۰۰۰ تومان')"></div>
-    <div id="hotspot-2" class="hotspot" style="top: 58%; left: 72%;" onclick="showProduct('کت و شلوار کلاسیک شیک', 'طراحی مدرن مناسب مهمانی‌ها و جلسات رسمی', '۴,۸۰۰,۰۰۰ تومان')"></div>
+    <div class="hotspot" style="top: 60%; left: 35%;" onclick="showProduct('پالتو و لباس مجلسی زنانه', 'مجموعه پاییزه، دوخت عالی و پارچه درجه یک', '۳,۴۰۰,۰۰۰ تومان')"></div>
+    <div class="hotspot" style="top: 58%; left: 72%;" onclick="showProduct('کت و شلوار کلاسیک شیک', 'طراحی مدرن مناسب مهمانی‌ها و جلسات رسمی', '۴,۸۰۰,۰۰۰ تومان')"></div>
 
-    <!-- کارت اطلاعات محصول (پاپ‌آپ) -->
     <div id="productCard" class="product-card">
         <h3 id="prodTitle">نام محصول</h3>
         <p id="prodDesc">توضیحات محصول اینجا قرار می‌گیرد.</p>
@@ -141,12 +138,10 @@
         <button class="btn-buy" onclick="addToCart()">افزودن به سبد خرید</button>
     </div>
 
-    <!-- کتابخانه‌های Three.js و OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <script>
-        // ۱. راه‌اندازی صحنه، دوربین و رندرور
         const container = document.getElementById('webgl-container');
         const scene = new THREE.Scene();
 
@@ -157,56 +152,45 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         container.appendChild(renderer.domElement);
 
-        // ۲. اضافه کردن کنترل چرخش دوربین
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableZoom = false;
         controls.enablePan = false;
         controls.rotateSpeed = -0.25;
 
-        // ۳. قرار دادن تصویر فروشگاه به عنوان پس‌زمینه سه‌بعدی (کره محیطی)
         const geometry = new THREE.SphereGeometry(500, 60, 40);
-        geometry.scale(-1, 1, 1); // برعکس کردن کره به سمت داخل
+        geometry.scale(-1, 1, 1);
 
         const textureLoader = new THREE.TextureLoader();
-        
-        // نام فایل تصویر به store.jpg تغییر یافت (تصویر باید کنار این فایل HTML باشد)
         textureLoader.load('store.jpg', 
             (texture) => {
                 const material = new THREE.MeshBasicMaterial({ map: texture });
                 const sphere = new THREE.Mesh(geometry, material);
                 scene.add(sphere);
-                console.log("تصویر با موفقیت بارگذاری شد.");
             }, 
             undefined, 
             (error) => {
-                console.error("خطا در بارگذاری تصویر! بررسی کنید که فایل store.jpg دقیقاً کنار فایل html باشد.", error);
-                alert("تصویر پس‌زمینه یافت نشد! لطفاً نام عکس را به store.jpg تغییر داده و در کنار فایل کد قرار دهید.");
+                alert("خطا: عکس store.jpg پیدا نشد! آن را در کنار فایل html قرار دهید.");
             }
         );
 
-        // ۴. مدیریت نمایش پاپ‌آپ محصولات
         function showProduct(title, desc, price) {
             document.getElementById('prodTitle').innerText = title;
             document.getElementById('prodDesc').innerText = desc;
             document.getElementById('prodPrice').innerText = price;
-            
-            const card = document.getElementById('productCard');
-            card.classList.add('active');
+            document.getElementById('productCard').classList.add('active');
         }
 
         function addToCart() {
-            alert("محصول با موفقیت به سبد خرید فروشگاه اضافه شد!");
+            alert("محصول با موفقیت به سبد خرید اضافه شد!");
             document.getElementById('productCard').classList.remove('active');
         }
 
-        // بستن پاپ‌آپ با کلیک خارج از آن
         window.addEventListener('click', (e) => {
             if(!e.target.closest('.hotspot') && !e.target.closest('.product-card')) {
                 document.getElementById('productCard').classList.remove('active');
             }
         });
 
-        // ۵. حلقه انیمیشن رندر
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
@@ -214,7 +198,6 @@
         }
         animate();
 
-        // ۶. واکنش‌گرایی صفحه
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
